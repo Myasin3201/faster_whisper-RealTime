@@ -1,0 +1,32 @@
+# Virtual environment
+venv/
+env/
+.venv/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# IDE settings
+.idea/
+.vscode/
+
+# Output / generated files
+*.docx
+*.wav
+*.webm
+temp.*
+
+# Model cache (faster-whisper downloads models locally)
+.cache/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+1.py
+2.py
+3.py
+4.py
+main.py
