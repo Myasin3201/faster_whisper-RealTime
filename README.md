@@ -29,8 +29,8 @@ Microphone → continuous recording in small blocks → Queue
 
 ```bash
 # Clone the repository
-git clone https://github.com/<your-username>/<repo-name>.git
-cd <repo-name>
+git clone https://github.com/Myasin3201/faster_whisper-RealTime.git
+cd faster_whisper-RealTime
 
 # Create a virtual environment
 python -m venv venv
