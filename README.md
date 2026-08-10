@@ -44,7 +44,7 @@ pip install -r requirements.txt
 ## ▶️ Usage
 
 ```bash
-python faster_whisper.py
+python fasterWhisper.py
 ```
 
 Once running, you'll see `listening ...` in the terminal — start speaking. The text appears live in the terminal and is also saved to `transcript.docx`. Press **ESC** to stop the program.
