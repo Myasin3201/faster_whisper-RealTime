@@ -55,14 +55,16 @@ def get_chunk(duration_sec , overlap_sec = 0.5):
             leftover = full[needed_frames:]
             audio_buffer = [leftover] if len(leftover) > 0 else []
             return chunk
-
-def transcribe(model, audio_data):
+WAKE_PROMPT = "Assistant"
+COMMAND_PROMPT =  "next slide, previous slide, go to slide , next page , previous page , go to page "
+def transcribe(model, audio_data , prompt = WAKE_PROMPT):
     volume = np.abs(audio_data).mean()
     if volume < 0.01:
         return ""
     segments, _ = model.transcribe(
         audio_data, language="en", beam_size=1,
         vad_filter=True, vad_parameters=dict(min_silence_duration_ms=300) ,
+        initial_prompt=prompt
         # condition_on_previous_text=False,
         # temperature=0.0,no_speech_threshold=0.6
     )
@@ -80,17 +82,17 @@ def main_loop():
     while True:
         if state == "WAITING_FOR_WAKE":
             chunk = get_chunk(WAKE_CHUNK_DURATION)
-            text = transcribe(wake_model, chunk)
+            text = transcribe(wake_model, chunk , prompt = WAKE_PROMPT)
             if text:
-                print(f"[wake-check]: {text}")
+                print(f" WAITING_FOR_WAKE : {text}")
             if wake_word_detected(text):
-                print(">>> Wake word  ... LISTENING_COMMAND ...")
+                print(" ... LISTENING_COMMAND ...")
                 state = "LISTENING_COMMAND"
 
         elif state == "LISTENING_COMMAND":
             chunk = get_chunk(COMMAND_CHUNK_DURATION)
-            command_text = transcribe(command_model, chunk)
-            print(f"[دستور دریافت‌شده]: {command_text}")
+            command_text = transcribe(command_model, chunk , prompt = COMMAND_PROMPT)
+            print(f" LISTENING_COMMAND : {command_text}")
             state = "WAITING_FOR_WAKE"
 
 if __name__ == "__main__":
