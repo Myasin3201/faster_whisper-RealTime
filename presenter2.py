@@ -1,0 +1,95 @@
+import sounddevice as sd
+import queue
+import threading
+import numpy as np
+from faster_whisper import WhisperModel
+from rapidfuzz import fuzz
+
+samplerate = 16000
+channels = 1
+
+WAKE_BLOCK_DURATION = 0.5
+WAKE_CHUNK_DURATION = 2.5 # 1.5
+COMMAND_CHUNK_DURATION = 4.0 # 3
+
+WAKE_WORD = "assistant"
+WAKE_THRESHOLD = 70
+
+frames_per_block = int(samplerate * WAKE_BLOCK_DURATION)
+
+audio_queue = queue.Queue()
+audio_buffer = []
+
+wake_model = WhisperModel("tiny", compute_type="int8")
+command_model = WhisperModel("small", compute_type="int8")
+
+state = "WAITING_FOR_WAKE"
+
+
+def audio_callback(in_data, frames, time, status):
+    if status:
+        print(status)
+    audio_queue.put(in_data.copy())
+
+def recorder():
+    with sd.InputStream(samplerate=samplerate , channels=channels ,
+                        callback=audio_callback , blocksize=frames_per_block):
+        print("listening ...")
+        while True:
+            sd.sleep(100)
+
+def get_chunk(duration_sec):
+
+    global audio_buffer
+    needed_frames = int(samplerate * duration_sec)
+
+    while True:
+        block = audio_queue.get()
+        audio_buffer.append(block)
+        total = sum(len(b) for b in audio_buffer)
+        if total >= needed_frames:
+            full = np.concatenate(audio_buffer).flatten().astype(np.float32)
+            chunk = full[:needed_frames]
+            leftover = full[needed_frames:]
+            audio_buffer = [leftover] if len(leftover) > 0 else []
+            return chunk
+
+def transcribe(model, audio_data):
+    volume = np.abs(audio_data).mean()
+    if volume < 0.01:
+        return ""
+    segments, _ = model.transcribe(
+        audio_data, language="en", beam_size=1,
+        vad_filter=True, vad_parameters=dict(min_silence_duration_ms=300)
+    )
+    return " ".join(seg.text for seg in segments).strip()
+
+def wake_word_detected(text):
+    if not text:
+        return False
+    score = fuzz.partial_ratio(WAKE_WORD.lower(), text.lower())
+    return score >= WAKE_THRESHOLD
+
+
+def main_loop():
+    global state
+    while True:
+        if state == "WAITING_FOR_WAKE":
+            chunk = get_chunk(WAKE_CHUNK_DURATION)
+            text = transcribe(wake_model, chunk)
+            if text:
+                print(f"[wake-check]: {text}")
+            if wake_word_detected(text):
+                print(">>> Wake word  ... LISTENING_COMMAND ...")
+                state = "LISTENING_COMMAND"
+
+        elif state == "LISTENING_COMMAND":
+            chunk = get_chunk(COMMAND_CHUNK_DURATION)
+            command_text = transcribe(command_model, chunk)
+            print(f"[دستور دریافت‌شده]: {command_text}")
+            state = "WAITING_FOR_WAKE"
+
+if __name__ == "__main__":
+    threading.Thread(target=recorder, daemon=True).start()
+    main_loop()
+
