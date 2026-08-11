@@ -38,10 +38,11 @@ def recorder():
         while True:
             sd.sleep(100)
 
-def get_chunk(duration_sec):
+def get_chunk(duration_sec , overlap_sec = 0.5):
 
     global audio_buffer
     needed_frames = int(samplerate * duration_sec)
+    overlap_frames = int(samplerate * overlap_sec)
 
     while True:
         block = audio_queue.get()
@@ -50,6 +51,7 @@ def get_chunk(duration_sec):
         if total >= needed_frames:
             full = np.concatenate(audio_buffer).flatten().astype(np.float32)
             chunk = full[:needed_frames]
+            keep_from = needed_frames - overlap_frames
             leftover = full[needed_frames:]
             audio_buffer = [leftover] if len(leftover) > 0 else []
             return chunk
@@ -60,7 +62,9 @@ def transcribe(model, audio_data):
         return ""
     segments, _ = model.transcribe(
         audio_data, language="en", beam_size=1,
-        vad_filter=True, vad_parameters=dict(min_silence_duration_ms=300)
+        vad_filter=True, vad_parameters=dict(min_silence_duration_ms=300) ,
+        # condition_on_previous_text=False,
+        # temperature=0.0,no_speech_threshold=0.6
     )
     return " ".join(seg.text for seg in segments).strip()
 
