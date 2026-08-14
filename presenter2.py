@@ -4,6 +4,7 @@ import threading
 import numpy as np
 from faster_whisper import WhisperModel
 from rapidfuzz import fuzz
+import ppt_controller
 
 samplerate = 16000
 channels = 1
@@ -13,6 +14,7 @@ WAKE_CHUNK_DURATION = 2.5 # 1.5
 COMMAND_CHUNK_DURATION = 4.0 # 3
 
 WAKE_WORD = "assistant"
+OFF_WORD = "sleep"
 WAKE_THRESHOLD = 70
 
 frames_per_block = int(samplerate * WAKE_BLOCK_DURATION)
@@ -55,8 +57,10 @@ def get_chunk(duration_sec , overlap_sec = 0.5):
             leftover = full[needed_frames:]
             audio_buffer = [leftover] if len(leftover) > 0 else []
             return chunk
+
 WAKE_PROMPT = "Assistant"
-COMMAND_PROMPT =  "next slide, previous slide, go to slide , next page , previous page , go to page "
+COMMAND_PROMPT =  "next slide, previous slide, go to slide , next page , previous page , go to page  , sleep"
+
 def transcribe(model, audio_data , prompt = WAKE_PROMPT):
     volume = np.abs(audio_data).mean()
     if volume < 0.01:
@@ -76,6 +80,13 @@ def wake_word_detected(text):
     score = fuzz.partial_ratio(WAKE_WORD.lower(), text.lower())
     return score >= WAKE_THRESHOLD
 
+def off_word_detected(text):
+    if not text:
+        return False
+    score = fuzz.partial_ratio(OFF_WORD.lower(), text.lower())
+    return score >= WAKE_THRESHOLD
+
+ppt_app = ppt_controller.connect_to_powerpoint()
 
 def main_loop():
     global state
@@ -92,8 +103,16 @@ def main_loop():
         elif state == "LISTENING_COMMAND":
             chunk = get_chunk(COMMAND_CHUNK_DURATION)
             command_text = transcribe(command_model, chunk , prompt = COMMAND_PROMPT)
-            print(f" LISTENING_COMMAND : {command_text}")
-            state = "WAITING_FOR_WAKE"
+            if command_text:
+                print(f" LISTENING_COMMAND : {command_text}")
+
+            if off_word_detected(command_text):
+                print(" ... WAITING_FOR_WAKE ...")
+                state = "WAITING_FOR_WAKE"
+            elif command_text:
+                ppt_controller.execute_command(ppt_app, command_text)
+
+
 
 if __name__ == "__main__":
     threading.Thread(target=recorder, daemon=True).start()
