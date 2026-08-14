@@ -50,17 +50,17 @@ def goto_slide(app, slide_number):
 
 def start_slideshow(app):
     if app is None:
-        return
+        return None
     if app.Presentations.Count == 0:
         print("no slide_show is running ... ")
-        return
+        return None
     app.Presentations(1).SlideShowSettings.Run()
     print("slide show started ... ")
 
 
 def end_slideshow(app):
     if app is None:
-        return
+        return None
     if app.SlideShowWindows.Count > 0:
         app.SlideShowWindows(1).View.Exit()
         print("slide show ended ... ")
@@ -102,7 +102,7 @@ COMMAND_PATTERNS = {
 def match_command(text, threshold=65):
 
     if not text:
-        return None, 0
+        return None
 
     best_command = None
     best_score = 0
@@ -144,5 +144,7 @@ def execute_command(app, text):
     elif command_name == "end":
         end_slideshow(app)
 
+
+## for program test
 # app = connect_to_powerpoint()
 # execute_command(app , 'next slide please')

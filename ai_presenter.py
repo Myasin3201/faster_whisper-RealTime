@@ -54,7 +54,7 @@ def get_chunk(duration_sec , overlap_sec = 0.5):
             full = np.concatenate(audio_buffer).flatten().astype(np.float32)
             chunk = full[:needed_frames]
             keep_from = needed_frames - overlap_frames
-            leftover = full[needed_frames:]
+            leftover = full[keep_from:]
             audio_buffer = [leftover] if len(leftover) > 0 else []
             return chunk
 
